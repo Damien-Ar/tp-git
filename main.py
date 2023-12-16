@@ -105,6 +105,30 @@ def print_history(_from: str) -> None:
     except KeyError:
       break
 
+def parse_tree_entry(raw_bytes: str) -> tuple:
+  info, bin_sha1 = raw_bytes.split(b"\x00", maxsplit= 1)
+  mode, raw_name = info.split(b" ")
+  sha1 = bin_sha1.hex()
+  type, _ = get_object(sha1)
+  name = raw_name.decode("utf-8")
+  return mode, type, sha1, name
+
+def parse_tree(sha1 : str) -> list:
+  type, data = get_object(sha1)
+  assert type == b"tree"
+  entries = []
+  start = 0
+  while True:
+    try:
+      sep_index = data.index(b"\x00", start)
+      end = sep_index + 1 + 20
+    except ValueError:
+      break
+
+    entries.append(parse_tree_entry(data[start:end]))
+    start = end
+
+  return entries
 
 print(repo_notgit_dir("./test"))
 print(get_object("5fc3a27876f4d94b666562d74b62627d33879aa1"))
@@ -113,3 +137,4 @@ print(resolve_ref("5fc3a27876f4d94b666562d74b62627d33879aa1"))
 print(hash_object("./test.txt"))
 print(parse_commit(resolve_ref("HEAD")))
 print_history("HEAD")
+print(parse_tree(parse_commit(resolve_ref("HEAD"))["tree"]))
