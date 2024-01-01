@@ -130,11 +130,42 @@ def parse_tree(sha1 : str) -> list:
 
   return entries
 
+def restore_file(blob_sha1 : str, path: Path):
+  type, data = get_object(blob_sha1)
+  assert type == b"blob"
+
+  path.write_bytes(data)
+
+def restore_tree(tree_sha1: str, path: Path):
+  path.mkdir(exist_ok = True)
+
+  tree = parse_tree(tree_sha1)
+  for _, type, sha1, name in tree:
+    target_path = path/name
+    if type == b"blob":
+      restore_file(sha1, target_path)
+    elif type == b"tree":
+      restore_tree(sha1, target_path)
+
+def switch(ref: str) -> None:
+  if ref in read_ref_content("HEAD"):
+    print(f"Already on {ref}")
+    return
+
+  sha1 = resolve_ref(ref)
+  commit = parse_commit(ref)
+  tree_ref = commit["tree"]
+
+  restore_tree(tree_ref, repo_root)
+
+  new_head = sha1 if ref == sha1 else f"ref: {ref}"
+  (repo_notgit_dir() / "HEAD").write_text(new_head)  
+
 print(repo_notgit_dir("./test"))
 print(get_object("5fc3a27876f4d94b666562d74b62627d33879aa1"))
 print(resolve_ref("HEAD"))
 print(resolve_ref("5fc3a27876f4d94b666562d74b62627d33879aa1"))
-print(hash_object("./test.txt"))
+print(hash_object("./test/test.txt"))
 print(parse_commit(resolve_ref("HEAD")))
 print_history("HEAD")
 print(parse_tree(parse_commit(resolve_ref("HEAD"))["tree"]))
