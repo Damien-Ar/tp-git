@@ -1,14 +1,29 @@
 from pathlib import Path
 import zlib
 import hashlib
+from time import time, strftime
 
 GIT_DIR = ".notgit"
 GIT_OBJECTS_DIR = "objects"
-GIT_REFS_DIR = "refs"
+GIT_REFS_HEAD_DIR = "refs/heads"
+GIT_REFS_TAGS_DIR = "refs/tags"
+GIT_HEAD_FILE = "HEAD"
+GIT_DEFAULT_BRANCH_NAME = "main"
 GIT_DATA_FOLDERS = [
   GIT_OBJECTS_DIR,
-  GIT_REFS_DIR
+  GIT_REFS_HEAD_DIR,
+  GIT_REFS_TAGS_DIR
 ]
+
+class Committer:
+  def __init__(self, name, email) -> None:
+    self.name = name
+    self.email = email
+  
+  def __str__(self) -> str:
+    return f"{self.name} <{self.email}>"
+  
+GIT_COMMITTER = Committer("Damien-Ar", "damien.aranda42@gmail.com")
 
 def repo_root(path: str = None) -> Path:
   # Get current directory if unspecified
@@ -43,7 +58,6 @@ def object_path(sha1: str) -> Path:
   return repo_notgit_dir() / GIT_OBJECTS_DIR / sha1[:2] / sha1[2:]
 
 def object_content(sha1: str) -> bytes:
-  print(sha1)
   try:
     with object_path(sha1).open(mode="rb") as f:
       return zlib.decompress(f.read())
@@ -90,12 +104,42 @@ def hash_content(value: bytes, object_type: str = "tree", write: bool = False) -
   return sha1
 
 def parse_commit_header(raw: str) -> dict:
+  #lines séparéses par \n
+  #données séparée par un espace
+  #hash de la racine, hash du commit parent, auteur, commiter
   lines = raw.split("\n")
 
   splitted = [line.split(maxsplit = 1) for line in lines]
   return {name: value for name, value in splitted}
 
+def encode_commit_header(metadata: dict) -> bytes:
+  header = "\n".join([key + " " + value for key, value in metadata.items()])
+  return header.encode()
+
+def encode_commit(metadata, message) -> bytes:
+  raw_header = encode_commit_header(metadata)
+  raw_message = message.encode()
+  return raw_header + b"\n\n" + raw_message
+
+def get_commit_metadata():
+  metadata = {}
+  metadata["tree"] = hash_content(encode_tree(repo_root()))
+  try:
+    metadata["parent"] = resolve_ref(GIT_HEAD_FILE)
+  except:
+    pass
+  metadata_author = f"{GIT_COMMITTER} {int(time())} {strftime('%z')}"
+  metadata["author"] =  metadata_author
+  metadata["committer"] = metadata_author
+  return metadata
+
+def commit(message: str, write: bool = False):
+  metadata = get_commit_metadata()
+  raw_commit = encode_commit(metadata, message)
+  return hash_content(raw_commit, object_type="commit", write=write)
+
 def parse_commit(sha1: str) -> dict:
+  # forme header\n\nmessage
   type, data = get_object(sha1)
   assert type == b"commit"
 
@@ -160,18 +204,14 @@ def parse_tree(sha1 : str) -> list:
 def encode_tree(path: Path) -> bytes:
   entries = []
   for child in path.iterdir():
-    print(child.name)
     if(child.is_file()):
       entries.append(encode_tree_entry(child))
     else:
       entries.append(encode_tree_entry_tree(child, encode_tree(child)))
-    print(entries[-1])
   return b"\x00".join(entries)
 
 def write_tree(path: Path) -> None:
   tree_content = encode_tree(path)
-  print(tree_content)
-  print(hash_content(tree_content))
   hash_content(tree_content, write=True)
 
 def restore_file(blob_sha1 : str, path: Path):
@@ -211,7 +251,8 @@ def initialise_repo(path: str=None) -> None :
   try:
     repo_path.mkdir()
     for dir in GIT_DATA_FOLDERS:
-      (repo_path / dir).mkdir()
+      (repo_path / dir).mkdir(parents=True)
+    (repo_path / GIT_HEAD_FILE).write_text(f"ref: {GIT_REFS_HEAD_DIR}/{GIT_DEFAULT_BRANCH_NAME}")
   except:
     print("There is already a repository")
 
@@ -224,4 +265,4 @@ def initialise_repo(path: str=None) -> None :
 # print(hash_object(Path("./test/test.txt")))
 # print(parse_commit(resolve_ref("HEAD")))
 # print_history("HEAD")
-# print(parse_tree(parse_commit(resolve_ref("HEAD"))["tree"]))
+# print(parse_tree(parse_commit(resolve_ref("HEAD"))["tree"]))commit
