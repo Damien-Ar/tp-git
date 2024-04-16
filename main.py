@@ -3,6 +3,8 @@ import zlib
 import hashlib
 from time import time, strftime
 
+DEFAUT_GIT_DIR = ".git"
+DEFAUT_NOTGIT_DIR = ".notgit"
 GIT_DIR = ".notgit"
 GIT_OBJECTS_DIR = "objects"
 GIT_REFS_HEAD_DIR = "refs/heads"
@@ -201,18 +203,37 @@ def parse_tree(sha1 : str) -> list:
 
   return entries
 
+def should_ignore_path(path: Path) -> bool:
+  path_string = str(path)
+  return DEFAUT_GIT_DIR in path_string or DEFAUT_NOTGIT_DIR in path_string 
+
 def encode_tree(path: Path) -> bytes:
   entries = []
   for child in path.iterdir():
+    if should_ignore_path(child):
+      print(f"ignore {child}")
+      continue
     if(child.is_file()):
       entries.append(encode_tree_entry(child))
     else:
       entries.append(encode_tree_entry_tree(child, encode_tree(child)))
   return b"\x00".join(entries)
 
-def write_tree(path: Path) -> None:
+def write_tree(path: Path) -> str:
   tree_content = encode_tree(path)
-  hash_content(tree_content, write=True)
+  return hash_content(tree_content, write=True)
+
+def write_dir(path: Path):
+  for child in path.iterdir():
+    if should_ignore_path(child):
+      print(f"ignore {child}")
+      continue
+    if(child.is_file()):
+      hash = hash_object(child, write=True)
+    else:
+      hash = write_tree(child)
+      write_dir(child)
+    print(f"Objet écrit : {hash}")
 
 def restore_file(blob_sha1 : str, path: Path):
   type, data = get_object(blob_sha1)
