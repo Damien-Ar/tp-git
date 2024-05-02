@@ -138,7 +138,17 @@ def get_commit_metadata():
 def commit(message: str, write: bool = False):
   metadata = get_commit_metadata()
   raw_commit = encode_commit(metadata, message)
-  return hash_content(raw_commit, object_type="commit", write=write)
+  hash = hash_content(raw_commit, object_type="commit", write=write)
+  if write:
+    write_ref(hash)
+  print(hash)
+
+def write_ref(hash: str) -> None:
+  head_content = read_ref_content(GIT_HEAD_FILE)
+  if not "ref:" in head_content:
+    raise Exception("Contenue de HEAD corrompu")
+  branch_ref = repo_notgit_dir() / head_content.split()[1]
+  branch_ref.write_text(hash)
 
 def parse_commit(sha1: str) -> dict:
   # forme header\n\nmessage
