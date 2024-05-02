@@ -272,7 +272,7 @@ def switch(ref: str) -> None:
   commit = parse_commit(ref)
   tree_ref = commit["tree"]
 
-  restore_tree(tree_ref, repo_root)
+  restore_tree(tree_ref, repo_root())
 
   new_head = sha1 if ref == sha1 else f"ref: {ref}"
   (repo_notgit_dir() / "HEAD").write_text(new_head)  
