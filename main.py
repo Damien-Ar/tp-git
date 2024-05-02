@@ -197,9 +197,9 @@ def parse_tree(sha1 : str) -> list:
       end = sep_index + 1 + 20
     except ValueError:
       break
-
+#    print(f"start={start}, end={end}, data ={data[start:end]}")
     entries.append(parse_tree_entry(data[start:end]))
-    start = end
+    start = end + 1
 
   return entries
 
@@ -230,10 +230,11 @@ def write_dir(path: Path):
       continue
     if(child.is_file()):
       hash = hash_object(child, write=True)
+      print(f"Objet écrit : {hash}")
     else:
-      hash = write_tree(child)
       write_dir(child)
-    print(f"Objet écrit : {hash}")
+  hash_courant = write_tree(path)
+  print(f"écriture du dossier: {hash_courant}")
 
 def restore_file(blob_sha1 : str, path: Path):
   type, data = get_object(blob_sha1)
