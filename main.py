@@ -214,8 +214,7 @@ def parse_tree(sha1 : str) -> list:
   return entries
 
 def should_ignore_path(path: Path) -> bool:
-  path_string = str(path)
-  return DEFAUT_GIT_DIR in path_string or DEFAUT_NOTGIT_DIR in path_string 
+  return path.match(DEFAUT_GIT_DIR) or path.match(DEFAUT_NOTGIT_DIR)
 
 def encode_tree(path: Path) -> bytes:
   entries = []
