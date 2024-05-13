@@ -64,7 +64,7 @@ def object_content(sha1: str) -> bytes:
     with object_path(sha1).open(mode="rb") as f:
       return zlib.decompress(f.read())
   except IOError:
-    raise Exception("fatal : Not a notGit object")
+    raise Exception(f"fatal : {sha1}  is not a notGit object")
   
 def get_object(sha1 : str) :
   header, data = object_content(sha1).split(b"\x00", maxsplit=1)
@@ -209,7 +209,7 @@ def parse_tree(sha1 : str) -> list:
       break
 #    print(f"start={start}, end={end}, data ={data[start:end]}")
     entries.append(parse_tree_entry(data[start:end]))
-    start = end + 1
+    start = end
 
   return entries
 
@@ -227,7 +227,7 @@ def encode_tree(path: Path) -> bytes:
       entries.append(encode_tree_entry(child))
     else:
       entries.append(encode_tree_entry_tree(child, encode_tree(child)))
-  return b"\x00".join(entries)
+  return b"".join(entries)
 
 def write_tree(path: Path) -> str:
   tree_content = encode_tree(path)
