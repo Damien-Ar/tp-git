@@ -1,3 +1,4 @@
 .notgit
 .idea
 venv
+__pycache__

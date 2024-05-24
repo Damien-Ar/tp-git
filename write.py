@@ -104,6 +104,7 @@ def commit(message: str, write: bool = False):
   hash = hash_content(raw_commit, object_type="commit", write=write)
   if write:
     write_ref(hash)
+    write_dir(repo_root())
   print(hash)
 
 def write_ref(hash: str) -> None:
